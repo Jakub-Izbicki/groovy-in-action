@@ -3,6 +3,7 @@ import org.codehaus.groovy.runtime.typehandling.GroovyCastException
 import org.junit.jupiter.api.Test
 
 import java.awt.Point
+import java.util.regex.Matcher
 
 import static org.junit.Assert.assertThrows
 
@@ -76,13 +77,22 @@ class DatatypesTest {
     }
 
     @Test
-    void "groovy types are not dynamic, they never change"() {
+    void "in groovy, strict types are not dynamic, they never change"() {
         int integer = 1
-        integer = 2
+        assert integer instanceof Integer
 
         assertThrows(GroovyCastException.class, () -> {
             integer = new Object()
         })
+    }
+
+    @Test
+    void "unless a type is specified using 'def'"() {
+        def dynamic = 1
+        assert dynamic instanceof Integer
+
+        dynamic = new String("Hi")
+        assert dynamic instanceof String
     }
 
     @Test
@@ -174,5 +184,117 @@ class DatatypesTest {
         assert "x" instanceof String
         def foo = "foo"
         assert "x$foo" instanceof GString
+    }
+
+    @Test
+    void "gstrings"() {
+        def names = [me: 'Tarzan', you: 'Jane']
+        def quote = "Me: $names.me, you: $names.you"
+        assert quote == "Me: Tarzan, you: Jane"
+
+        assert quote.strings[0] == "Me: "
+        assert quote.strings[1] == ", you: "
+        assert quote.values == ['Tarzan', 'Jane']
+        assert quote.valueCount == 2
+
+        assert "Me: ${names.me.toLowerCase()}" == "Me: tarzan" // braces denote closure
+
+        assert "got 1\$" == 'got 1$'
+    }
+
+    @Test
+    void "groovy misc string operations"() {
+        def greeting = "Hello Groovy"
+
+        assert greeting[0] == 'H'
+        assert greeting[-1] == 'y'
+        assert greeting[6..11] == 'Groovy'
+
+        assert 'x'.center(3) == ' x '
+
+        def padded = ['1', '10', '100', '1000'].collect { it.padLeft(5) }
+        assert padded == ['    1', '   10', '  100', ' 1000']
+    }
+
+    @Test
+    void "using left shift and assign operator with strings"() {
+        def greet = "Hello"
+        assert greet instanceof String
+        greet <<= " Groovy" // greet def variable changes type to StringBuilder
+        assert greet instanceof StringBuffer
+
+        String greet2 = "Hi"
+        assert greet2 instanceof String
+        greet2 <<= " Groovy" // greet has specified String type, so it does not change dynamically
+        assert greet2 instanceof String
+    }
+
+    @Test
+    void "and StringBuffer"() {
+        // no changing a string in place, because strings are immutable in Java and Groovy,
+        // but we can do it with a use of StringBuffer (thread safe) or StringBuilder
+        def greet = "Hello"
+        greet <<= " Groovy"
+        greet << "!"
+        assert greet.toString() == "Hello Groovy!"
+
+        greet[1..4] = "i"
+        assert greet.toString() == "Hi Groovy!"
+
+        assert greet.toString() - "Hi " == "Groovy!"
+    }
+
+    @Test
+    void "escaping slashes (\\) in slashy strings"() {
+        assert "\\d" == /\d/
+    }
+
+    @Test
+    void "regex operators in groovy"() {
+        def quote = "Me Tarzan - you Jane."
+
+        // find operator
+        def matcher = quote =~ /\w - \w/ // find occurrences of dash surrounded by words and spaces
+
+        assert matcher
+        assert matcher instanceof Matcher
+        assert matcher.size() == 1
+
+        // match operator
+        def match = quote ==~ /^Me(.*)Jane\.$/
+        assert match
+        assert match instanceof Boolean
+
+        // slashy gstrings
+        def WORD = /\w+/
+        assert quote ==~ /^($WORD( -)? $WORD)*\.$/
+
+        assert quote.split(/ /).size() == 5 // using slashy string in split method
+    }
+
+    @Test
+    void "use find operator with closures"() {
+        def quote = "Me Tarzan - you Jane."
+
+        def found = ''
+        (quote =~ /a/).each { found += it }
+        assert found.size() == 3
+
+        assert quote.replaceAll(/ /) { '_' } == "Me_Tarzan_-_you_Jane."
+    }
+
+    @Test
+    void "matcher contains list of matched groups"() {
+        def matcher = 'a b c' =~ /\S/ // non-whitespace chars
+        assert matcher[1] == 'b'
+        assert matcher[1..2] == ['b', 'c']
+    }
+
+    @Test
+    void "parallel assignment"() {
+        def (one, two, three) = 'a b c' =~ /\S/ // non-whitespace chars
+        assert one == 'a'
+        assert two == 'b'
+        assert three == 'c'
     }
 }
