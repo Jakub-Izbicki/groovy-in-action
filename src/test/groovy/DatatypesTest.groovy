@@ -1,3 +1,4 @@
+import groovy.transform.Immutable
 import org.codehaus.groovy.runtime.typehandling.GroovyCastException
 import org.junit.jupiter.api.Test
 
@@ -110,5 +111,68 @@ class DatatypesTest {
         assert pointFromList instanceof Point
         Point pointFromMap = [x: 0, y: 0]
         assert pointFromMap instanceof Point
+    }
+
+    @Test
+    void "+ and == operator implementing in custom class"() {
+        def moneyUsd1 = new Money(1, 'USD')
+        def moneyUsd2 = new Money(1, 'USD')
+        def moneyPln = new Money(1, 'PLN')
+
+        assert moneyUsd1 == moneyUsd1
+        assert moneyUsd1 == moneyUsd2
+        assert moneyUsd1 != moneyPln
+        assert moneyUsd1 + moneyUsd2 == new Money(2, 'USD')
+        assert moneyUsd1 + 1 == new Money(2, 'USD')
+    }
+
+    @Immutable
+    static class Money {
+
+        int amount
+        String currency
+
+        Money plus(Money other) {
+            if (currency != other.currency) {
+                throw IllegalArgumentException(" Cannot add different currencies")
+            }
+
+            return new Money(amount + other.amount, currency);
+        }
+
+        Money plus(Integer num) {
+            return new Money(amount + num, currency);
+        }
+    }
+
+    @Test
+    void "coercion - promoting arguments to general or specific type"() {
+        assert 1 + 1.0 instanceof BigDecimal
+        assert 1.0 + 1 instanceof BigDecimal
+        assert 1 + 1.0f instanceof Double
+        assert 1.0f + 1 instanceof Double
+    }
+
+    @Test
+    void "string literals"() {
+        assert 'foo' // java-like
+
+        def name = 'foo'
+        assert "$name bar" == 'foo bar'
+
+        assert """multiline $name""" == '''multiline foo'''
+        assert "foo\nfoo" != /foo\nfoo/
+
+        assert "'Hello there'" != '"Hello there"'
+    }
+
+    @Test
+    void "character literals"() {
+        assert 'x' instanceof String
+        assert 'x'.toCharacter() instanceof Character
+
+        assert "x" instanceof String
+        def foo = "foo"
+        assert "x$foo" instanceof GString
     }
 }
