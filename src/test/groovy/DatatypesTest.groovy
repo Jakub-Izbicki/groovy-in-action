@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test
 
 import java.awt.Point
 import java.util.regex.Matcher
+import java.util.regex.Pattern
 
 import static org.junit.Assert.assertThrows
 
@@ -28,6 +29,8 @@ class DatatypesTest {
     void "numeric literals"() {
         assert 1
                 instanceof Integer
+        assert 1g
+                instanceof BigInteger
         assert 1.2
                 instanceof BigDecimal
         assert 1.2g
@@ -44,8 +47,6 @@ class DatatypesTest {
                 instanceof Double
         assert 1.2d
                 instanceof Double
-        assert 1g
-                instanceof BigInteger
     }
 
     @Test
@@ -137,6 +138,7 @@ class DatatypesTest {
     }
 
     @Immutable
+    // adds its own implementations of equals and hashCode
     static class Money {
 
         int amount
@@ -220,7 +222,7 @@ class DatatypesTest {
     void "using left shift and assign operator with strings"() {
         def greet = "Hello"
         assert greet instanceof String
-        greet <<= " Groovy" // greet def variable changes type to StringBuilder
+        greet <<= " Groovy" // greet def variable changes type to StringBuffer
         assert greet instanceof StringBuffer
 
         String greet2 = "Hi"
@@ -260,7 +262,7 @@ class DatatypesTest {
         assert matcher instanceof Matcher
         assert matcher.size() == 1
 
-        // match operator
+        // full match operator
         def match = quote ==~ /^Me(.*)Jane\.$/
         assert match
         assert match instanceof Boolean
@@ -296,5 +298,89 @@ class DatatypesTest {
         assert one == 'a'
         assert two == 'b'
         assert three == 'c'
+    }
+
+    @Test
+    void "if pattern contains parenthesis, matchers' matches are lists of groups, instead of strings"() {
+        def matcher = 'a:1 b:2 c:3' =~ /([a-z]):([0-9])/
+        assert matcher.size() == 3
+        assert matcher[0].size() == 3
+        assert matcher[0] == ['a:1', 'a', '1']
+        assert matcher[0][1] == 'a'
+
+        // if closure defined with multiple params, they are populated with matcher's groups
+        // (amount of groups must match params count, or else will throw)
+        matcher.each { full, firstGroup, secondGroup ->
+            assert full.size() == 3
+            assert firstGroup.size() == 1
+            assert secondGroup.size() == 1
+        }
+    }
+
+    @Test
+    void "pattern operator"() {
+        // perform costly finite-state machine creation only once with ~ operator
+        def fourLetterWord = ~/\b\w{4}\b/
+        assert fourLetterWord instanceof Pattern
+
+        def matcher = fourLetterWord.matcher("Me Tarzan - you Jane") // equivalent of =~ operator
+        assert matcher.size() == 1
+
+        assert fourLetterWord.isCase("Jane") // equivalent of ==~ operator
+        assert "Jane" in fourLetterWord
+
+        switch ("Jane") {
+            case fourLetterWord:
+                assert true
+                break
+            default:
+                assert false
+        }
+    }
+
+    @Test
+    void "coercion with numeric operators"() {
+        // if any is Float or Double -> Double
+        assert 1d + 1f instanceof Double
+        assert 1f + 1f instanceof Double
+
+        // otherwise, if any is BigDecimal -> BigDecimal
+        assert 1.0G + 1 instanceof BigDecimal
+
+        // otherwise, if any is BigInteger -> BigInteger
+        assert 1G + 1 instanceof BigInteger
+
+        // otherwise, if any is Long -> Long
+        assert 1L + 1 instanceof Long
+
+        // otherwise, result is Integer
+        assert (Byte) 1 + (Byte) 1 instanceof Integer
+    }
+
+    @Test
+    void "numeric operators caveats"() {
+        // for division, if any is Float or Double, result is Double
+        assert 1f / 2 instanceof Double
+        // otherwise, result is BigDecimal
+        assert 1 / 2 instanceof BigDecimal
+        // Integer as a division result only by casting
+        assert (Integer) (1 / 2) instanceof Integer
+        // or with method
+        assert 1.intdiv(2) instanceof Integer
+
+        //non-power operators do not promote result type (will overflow)
+        assert Integer.MAX_VALUE + 1 instanceof Integer
+        assert Integer.MAX_VALUE + 1 == Integer.MIN_VALUE
+
+        // power operator promotes if necessary
+        assert 2**30 instanceof Integer
+        assert 2**31 instanceof BigInteger
+        assert 2**31 == Integer.MAX_VALUE + 1G
+        assert 2**3.5 instanceof Double
+
+        // equals operator coerces to a more general type, e.g. Float to BigDecimal:
+        assert 1.5G == 1.5F
+        // 1.1 cannot be properly represented as float - after conversion to BigDecimal, is equals 1.100000023841858G
+        assert 1.1G != 1.1F
     }
 }
