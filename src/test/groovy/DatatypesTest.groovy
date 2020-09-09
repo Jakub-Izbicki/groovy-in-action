@@ -383,4 +383,36 @@ class DatatypesTest {
         // 1.1 cannot be properly represented as float - after conversion to BigDecimal, is equals 1.100000023841858G
         assert 1.1G != 1.1F
     }
+
+    @Test
+    void "GDK methods for numbers"() {
+        assert 2 == 2.5.toInteger() // conversion method
+        assert 2 == 2.5 as Integer // coercion
+        assert 2 == (int) 2.5
+        assert 4 == 4.5.trunc()
+
+        assert '5.34315'.isNumber()
+        assert 5 == '5'.toInteger()
+        assert 5 == '5' as Integer
+        assert 53 == (int) '5' // casts string of size 1 to its unicode value !!
+        assert '5 times' == 5 + " times"
+
+        def times = []
+        5.times {
+            times << "x"
+        }
+        assert times.size() == 5
+
+        def upTo = []
+        1.upto(3) {
+            upTo << it
+        }
+        assert upTo == [1, 2, 3]
+
+        def steps = []
+        1.step(3, 0.5) {
+            steps << it
+        }
+        assert steps == [1, 1.5, 2.0, 2.5]
+    }
 }
