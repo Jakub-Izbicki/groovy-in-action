@@ -158,6 +158,32 @@ class DatatypesTest {
     }
 
     @Test
+    void "equality and comparing objects"() {
+        def point1 = new Point(1, 1)
+        def point2 = new Point(1, 1)
+
+        // Point does not implement comparable, so Points' equals() is called
+        assert point1 == point2
+        // will throw cuz Point doesnt implement Comparable
+        assertThrows(IllegalArgumentException.class, () -> point1 > point2)
+
+        assert point1 === point1 // java's identity operator == (since groovy 3.0)
+        assert point1.is(point1)
+        assert point1 !== point2 // java's identity operator == (since groovy 3.0)
+        assert !point1.is(point2)
+
+        // will call Boolean.compareTo instead of equals(), cuz Boolean implements Comparable
+        assert true != false
+
+        // won't attempt to call any method on null (equals nor compareTo), because actually,
+        // before comparing, groovy always calls other method first:
+        // ScriptBytecodeAdapter.compareEqual(), which checks for nulls, and only then calls:
+        // DefaultTypeTransformation.compareTo(), which check if types are compatible
+        // (otherwise returns -1), and only then calls equals(), or compareTo()
+        assert null != 1
+    }
+
+    @Test
     void "coercion - promoting arguments to general or specific type"() {
         assert 1 + 1.0 instanceof BigDecimal
         assert 1.0 + 1 instanceof BigDecimal

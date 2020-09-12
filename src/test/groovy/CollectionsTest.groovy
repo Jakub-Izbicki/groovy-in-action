@@ -1,5 +1,8 @@
 import org.junit.jupiter.api.Test
 
+import java.util.stream.Collectors
+
+import static org.junit.Assert.assertArrayEquals
 import static org.junit.Assert.assertThrows
 
 class CollectionsTest {
@@ -19,6 +22,7 @@ class CollectionsTest {
 
         // reversed ranges
         assert (-2..0) == [-2, -1, 0]
+        assert (-2..1) == [-2, -1, 0, 1]
         assert (1..-2) == [1, 0, -1, -2]
 
         assert (0.0..1.0).size() == 2
@@ -70,8 +74,8 @@ class CollectionsTest {
         assert new Numeral(5) in (one..ten)
     }
 
-    // to be able to be used in ranges, datatype must implement next(), previous() and compareTo()
-    // and implement Comparable
+    // to be able to be used in ranges, datatype must implement next(), previous()
+    // and implement Comparable (compareTo())
     static class Numeral implements Comparable {
 
         private final int num
@@ -80,11 +84,11 @@ class CollectionsTest {
             this.num = num
         }
 
-        Numeral next() {
+        Numeral next() { // ++ operator
             return new Numeral(num + 1)
         }
 
-        Numeral previous() {
+        Numeral previous() { // -- operator
             return new Numeral(num - 1)
         }
 
@@ -148,7 +152,7 @@ class CollectionsTest {
         assert list == ['x1', 'x2', 'x3', 'e', 'f', 'g']
         list[3..5] = ['x4'] // list shrinks
         assert list == ['x1', 'x2', 'x3', 'x4']
-        list[-1..-1] = [] // remove element in range from list, NOT the same as `list[-1] = []`
+        list[-1..-1] = [] // remove element in range from list, NOT the same as `list[-1] = []`, duh
         assert list == ['x1', 'x2', 'x3']
         list[1..1] = ['y2'] // switch one, the same as `list[1] = 'y2'`
         assert list == ['x1', 'y2', 'x3']
@@ -161,10 +165,125 @@ class CollectionsTest {
         // vs normal range
         assert [0, 1, 2, 3, 4, 5][1..3] == [1, 2, 3]
 
-        // when using positive on the left, and negative on the right, ranges in subscript no longer behave as ranges
-        // they are not reversed ranges, instead they are just indices of elements in list:
-        // e.g [1..-2] will get elements from 2nd to 2nd but least:
-        assert [0, 1, 2, 3, 4, 5][1..-2] == [1, 2, 3, 4] // tricky case !!!
-        assert [0, 1, 2, 3, 4, 5][-2..1] == [1, 2, 3, 4]
+        // mixing positive with negative numbers shows that ranges in subscript dont behave as normal ranges
+        // they are not typical ranges, but they are just indices of elements in list.
+        // e.g [1..-2] will get elements of indices [1, 2, 3, 4], instead of [1, 0, -1, -2] here:
+        assert [0, 1, 2, 3, 4, 5][1..-2] == [1, 2, 3, 4]
+        // or [-2..1] will get indices [4 (-2), 3, 2, 1], instead of [-2, -1, 0, 1]
+        assert [0, 1, 2, 3, 4, 5][-2..1] == [4, 3, 2, 1]
+
+        // but this behaviour can be overridden by forcing range to list:
+        assert [0, 1, 2, 3, 4, 5][(1..-2).toList()] == [1, 0, 5, 4]
+    }
+
+    @Test
+    void "removing and adding in lists"() {
+        assert [1, [2], [3, 4]].flatten() == [1, 2, 3, 4]
+        // gets elements present in both (intersection)
+        assert [1, 2, 3].intersect([2, 3, 4]) == [2, 3]
+        // checks if intersection is empty
+        assert [1, 2, 3].disjoint([4, 5, 6])
+
+        assert [1, 2, 3].pop() == 1 // pops 1st element (since groovy 2.5)}
+
+        assert [1, 2].reverse() == [2, 1]
+
+        assert [2, 3, 1].sort() == [1, 2, 3]
+        def list = [[1], [0, 2, 8], [4, 2]]
+        assert list.sort { a, b -> a[0] <=> b[0] } == [[0, 2, 8], [1], [4, 2]]
+        assert list.sort { el -> el.size() } == [[1], [4, 2], [0, 2, 8]]
+
+        list = ['a', 'b', 'c']
+        list.remove(2)
+        list.remove('b')
+        assert list == ['a']
+
+        assert [1, 2, 3].collect { item -> item * 2 } == [2, 4, 6] // java's map()
+        assert [1, 2, 3].findAll { item -> item % 2 != 0 } == [1, 3] // java's filter()
+
+        //sets and removing nulls
+        assert new HashSet<>([1, 2, 2]).toList() == [1, 2]
+        assert [1, 2, 2].unique() == [1, 2]
+        assert [1, 2, 2].unique() instanceof ArrayList
+
+        assert [1, null, 2].findAll { it != null } == [1, 2]
+        assert [1, null, 2].grep { it } == [1, 2] // groovy truth
+    }
+
+    @Test
+    void "query, iteration and reduce"() {
+        def list = [1, 2, 4, 3, 4]
+        assert list.first() == list.head()
+        assert list.last() != list.tail()
+        assert list.tail() == [2, 4, 3, 4]
+        assert list.count(4) == 2
+        assert list.max() == 4
+        assert list.join('-') == "1-2-4-3-4"
+
+        assert list.find { item -> item % 2 == 0 } == 2 // finds first
+        assert list.every { item -> item < 5 }
+        assert list.any { item -> item == 3 }
+
+        assert list.each { item -> assert item in list }
+        assert list.reverseEach { item -> assert item in list }
+        assert list.eachWithIndex { item, i -> assert i instanceof Integer }
+
+        // java's reduce()
+        // in this case uses list's head as init acc
+        assert list.inject { acc, item -> acc + item } == 1 + 2 + 4 + 3 + 4
+
+        assert !([1, 2].asSynchronized() instanceof ArrayList)
+        assertThrows(UnsupportedOperationException.class, () -> [1, 2].asImmutable() << 3)
+    }
+
+    @Test
+    void "lists in action - quickSort implementation"() {
+        assert quickSort([]) == []
+        assert quickSort([1]) == [1]
+        assert quickSort([1, 1]) == [1, 1]
+        assert quickSort([1, 2]) == [1, 2]
+        assert quickSort([3, 2, 1]) == [1, 2, 3]
+        assert quickSort([3, 1, 1, 3, 2]) == [1, 1, 2, 3, 3]
+        // works because string implements methods size(), getAt() and finAll()
+        assert quickSort('edcba') == 'abcde'.toList()
+        // misc items work, because they work with <, > and == operators
+        assert quickSort([1.0f, 'a', 10, null]) == [null, 1.0f, 10, 'a']
+    }
+
+    def quickSort(list) {
+        if (list.size() < 2) {
+            return list
+        }
+
+        def pivot = list[list.size().intdiv(2)]
+
+        def smaller = list.findAll { it < pivot }
+        def same = list.findAll { it == pivot }
+        def bigger = list.findAll { it > pivot }
+
+        return quickSort(smaller) + same + quickSort(bigger)
+    }
+
+    @Test
+    void "using groovy's lists like java's streams"() {
+        def urls = [
+                new URL('http', 'myshop.com', 80, 'index.html'),
+                new URL('https', 'myshop.com', 443, 'buynow.html'),
+                new URL('ftp', 'myshop.com', 21, 'downloads')
+        ]
+
+        // groovy's list methods
+        assert urls
+                .findAll { it.port < 99 }
+                .collect { it.file.toUpperCase() }
+                .sort()
+                .join(', ') == 'DOWNLOADS, INDEX.HTML'
+
+        // java's stream with groovy's sugar syntax
+        assert urls.stream()
+                .filter { it.port < 99 }
+                .map { it.file.toUpperCase() }
+                .sorted()
+                .collect(Collectors.joining(', ')) == 'DOWNLOADS, INDEX.HTML'
     }
 }
