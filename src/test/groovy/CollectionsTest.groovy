@@ -198,6 +198,9 @@ class CollectionsTest {
         list.remove('b')
         assert list == ['a']
 
+        list << 'd' // leftShift() operator
+        assert list == ['a', 'd']
+
         assert [1, 2, 3].collect { item -> item * 2 } == [2, 4, 6] // java's map()
         assert [1, 2, 3].findAll { item -> item % 2 != 0 } == [1, 3] // java's filter()
 
@@ -244,7 +247,7 @@ class CollectionsTest {
         assert quickSort([1, 2]) == [1, 2]
         assert quickSort([3, 2, 1]) == [1, 2, 3]
         assert quickSort([3, 1, 1, 3, 2]) == [1, 1, 2, 3, 3]
-        // works because string implements methods size(), getAt() and finAll()
+        // works because string implements methods size(), getAt() and findAll()
         assert quickSort('edcba') == 'abcde'.toList()
         // misc items work, because they work with <, > and == operators
         assert quickSort([1.0f, 'a', 10, null]) == [null, 1.0f, 10, 'a']
@@ -285,5 +288,72 @@ class CollectionsTest {
                 .map { it.file.toUpperCase() }
                 .sorted()
                 .collect(Collectors.joining(', ')) == 'DOWNLOADS, INDEX.HTML'
+    }
+
+    @Test
+    void "maps in groovy"() {
+        def map = [a: 1, b: 2, 'c': 3]
+        assert map['a'] == 1
+        assert map['c'] == 3
+        assert map.size() == 3
+        assert map instanceof LinkedHashMap
+
+        assert [a: 1] == ['a': 1] // for strings (no special chars) as keys, quotes can be omitted
+        def x = 'a'
+        assert [a: 1] == [(x): 1] // use parenthesis to force use of a variable, instead of string
+
+        assert [:] instanceof LinkedHashMap
+        assert [:].size() == 0
+
+        def treeMap = new TreeMap()
+        treeMap.putAll(map)
+        assert treeMap['a'] == 1
+
+        def spreaded = [*: map, d: 4] // spread operator!
+        assert spreaded == [a: 1, b: 2, c: 3, d: 4]
+    }
+
+    @Test
+    void "subscript operator with maps"() {
+        def map = [a: 1, b: 2, 'c': 3]
+        assert map['a'] == 1 // getAt() operator
+        assert map.a == 1
+        assert map.get('a') == 1
+        assert map.get('a', 0) == 1
+
+        assert map['d'] == null
+        assert map.d == null
+        assert map.get('d') == null
+        // when using get() with default, if value not found under key, default is put under that key
+        assert map.get('d', 0) == 0
+        assert map.get('d') == 0
+
+        map['d'] = 4 // putAt() operator
+        assert map.d == 4
+        map.d = 5
+        assert map.d == 5
+        map.'e' = 6
+        assert map.'e' == 6
+    }
+
+    @Test
+    void "query maps"() {
+        def map = [a: 1, b: 2, c: 3]
+        def otherMap = [b: 2, c: 3, a: 1] // different ordering but same entries
+        assert map == otherMap
+
+        assert !map.isEmpty()
+        assert map.size() == 3
+        assert map.containsKey('a')
+        assert map.containsValue(1)
+        assert map.entrySet() instanceof Set
+
+        assert map.every { entry -> entry.value < 4 }
+        assert map.any { entry -> entry.key == 'a' }
+
+        // list needs to be converted to Set to use Set's equals
+        assert map.keySet() == ['a', 'b', 'c'] as Set
+        // values need to be converted to list to use List's equals
+        assert map.values().asList() == [1, 2, 3]
     }
 }
