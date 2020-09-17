@@ -1,5 +1,6 @@
 import org.junit.jupiter.api.Test
 
+import java.util.regex.Pattern
 import java.util.stream.Collectors
 
 import static org.junit.Assert.assertArrayEquals
@@ -94,6 +95,14 @@ class CollectionsTest {
 
         int compareTo(Object other) {
             return num <=> other.num
+        }
+
+        Numeral plus(Object other) {
+            if (!(other instanceof Numeral)) {
+                throw new IllegalStateException()
+            }
+
+            return new Numeral(num + (other as Numeral).num)
         }
     }
 
@@ -352,8 +361,76 @@ class CollectionsTest {
         assert map.any { entry -> entry.key == 'a' }
 
         // list needs to be converted to Set to use Set's equals
-        assert map.keySet() == ['a', 'b', 'c'] as Set
+        assert map.keySet() == ['a', 'b', 'c'].asType(Set.class) as Set
         // values need to be converted to list to use List's equals
         assert map.values().asList() == [1, 2, 3]
+
+        map.each { entry -> assert map[entry.key] == entry.value }
+        map.each { key, value -> assert map[key] == value }
+    }
+
+    @Test
+    void "changing maps"() {
+        assert [a: 1] + [b: 2] == [a: 1, b: 2]
+
+        def map = [a: 1, b: 2, c: 3]
+
+        assert map.subMap(['a', 'b']) == [a: 1, b: 2]
+
+        def filteredMap = map.findAll { entry -> entry.value % 2 == 0 }
+        assert filteredMap instanceof Map
+        assert filteredMap == [b: 2]
+        assert filteredMap.b == 2
+
+        assert map.find { entry -> entry.value == 3 } instanceof Map.Entry
+        assert map.collect { entry -> entry.value * 2 } == [2, 4, 6]
+
+        def mapped = []
+        map.collect(mapped) { entry -> entry.value * 2 }
+        assert mapped == [2, 4, 6]
+
+        assert map.asImmutable() instanceof Map // UnmodifiableMap (Collections.unmodifiableMap)
+        assert map.asSynchronized() instanceof Map // SynchronizedMap (Collections.synchronizedMap)
+    }
+
+    @Test
+    void "counting frequencies of words"() {
+        def textCorpus =
+                """
+                Look for the bare necessities
+                The simple bare necessities
+                Forget about your worries and your strife
+                I mean the bare necessities
+                Old Mother Nature's recipes
+                That bring the bare necessities of life
+                """
+
+        def frequencies = [:]
+        def words = textCorpus.tokenize()
+        words.each { frequencies[it] = frequencies.get(it, 0) + 1 }
+        frequencies = frequencies.sort { a, b -> a.value <=> b.value }
+
+        assert frequencies.keySet().toList()[-1..-3] == ['necessities', 'bare', 'the']
+    }
+
+    @Test
+    void "javas principle of avoidance of structurally changing collection during iteration"() {
+        def list = [1, 2, 3]
+        assertThrows(ConcurrentModificationException.class,
+                () -> list.each { list.remove(0) })
+    }
+
+    @Test
+    void "copy and modify semantics on collections"() {
+        // usually methods that modify the receiver, no not return new collection
+        assert [1, 2, 3].removeAll { it == 2 } instanceof Boolean
+
+        // usually methods that dont modify the receiver return a collection
+        assert [1, 2, 3].findAll { it == 2 } instanceof List
+
+        // .sort() is exception here (modifies the receiver, and returns it)
+        // arithmetic operators (methods) usually should not modify the receiver, but return new object
+        def one = new Numeral(1)
+        assert one + new Numeral(0) !== one
     }
 }
