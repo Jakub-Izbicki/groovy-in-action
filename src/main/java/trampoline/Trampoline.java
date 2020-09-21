@@ -4,14 +4,10 @@ import java.util.stream.Stream;
 
 public interface Trampoline<T> {
 
-  T get();
+  T result();
 
   default Trampoline<T> jump() {
     return this;
-  }
-
-  default T result() {
-    return get();
   }
 
   default boolean complete() {
@@ -23,10 +19,10 @@ public interface Trampoline<T> {
   }
 
   static <W> Trampoline<W> more(Trampoline<Trampoline<W>> trampoline) {
-    return new Trampoline<W>() {
+    return new Trampoline<>() {
 
       @Override
-      public W get() {
+      public W result() {
         return trampoline(this);
       }
 
@@ -36,17 +32,12 @@ public interface Trampoline<T> {
       }
 
       @Override
-      public W result() {
-        return get();
-      }
-
-      @Override
       public boolean complete() {
         return false;
       }
 
       private W trampoline(final Trampoline<W> trampoline) {
-        return Stream.iterate(trampoline, Trampoline::jump)
+        return Stream.iterate(trampoline, a -> a.jump())
             .filter(Trampoline::complete)
             .findFirst()
             .map(Trampoline::result)
