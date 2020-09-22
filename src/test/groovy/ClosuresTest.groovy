@@ -203,4 +203,97 @@ class ClosuresTest {
 
         assert last(0..10_000) == 10_000
     }
+
+    @Test
+    void "closures implement isCase"() {
+        def odd = { it % 2 == 1 }
+
+        assert 3 in odd
+        assert [1, 2, 3, 4].grep(odd) == [1, 3]
+
+        switch (3) {
+            case odd:
+                assert true
+                break
+            default:
+                assert false
+        }
+    }
+
+    @Test
+    void "scope in closures, birthday context"() {
+        def x = 0
+
+        // local variable x is available to closure for read and write at declaration time
+        // (in java 8 lambdas no write, only read).
+        // birthday context - closure keeps reference to x when declared,
+        // so at the time of execution, it can write to it
+        def incrementX = { x++ }
+
+        10.times(incrementX)
+        assert x == 10
+    }
+
+    @Test
+    void "closures scope in action"() {
+        def julia = new Mother()
+
+        // closure declaration time, refs to local variables are kept,
+        // refs to free variables are kept according to resolve strategy (default is OWNER_FIRST)
+        def closure = julia.birth('param')
+
+        // closure execution time, refs are resolved
+        def context = closure()
+
+        // when resolving refs, closure first checks its local scope, then this, then owner, then delegate:
+        // this - is always enclosing class
+        // owner - same as this, unless closure is nested in another closure, then outer closure is the owner
+        // delegate - same as owner, but can be changed programmatically (e.g. with method .with())
+        assert closure.thisObject == julia
+        assert closure.owner == julia
+        assert closure.delegate == julia
+
+        // when resolving refs, owner vs delegate conflicts may appear,
+        // but it can be controlled with a strategy:
+        assert closure.resolveStrategy == Closure.OWNER_FIRST
+
+        assert context == [
+                'prop', 'method', // resolved local variables
+                'param', 'local'  // resolved free variables
+        ]
+    }
+
+    class Mother {
+
+        def prop = 'prop'
+
+        def method() { 'method' }
+
+        Closure birth(param) {
+            def local = 'local'
+            return { [prop, method(), param, local] }
+        }
+    }
+
+    @Test
+    void "dynamically changing of delegate in closure"() {
+        def closure = { myString }
+
+        // myString ref is resolved against delegates' scope
+        // (first is looked for in local, then owner, only then in delegate is found)
+        assert new MyClass1().with(closure) == "1"
+        assert new MyClass2().with(closure) == "2"
+
+        // will throw MissingPropertyException: No such property: myString2 for class: ClosuresTest
+        // because closure's this, owner, and delegate is ClosuresTest class, and there is no myString
+        assertThrows(MissingPropertyException, () -> closure())
+    }
+
+    class MyClass1 {
+        String myString = "1"
+    }
+
+    class MyClass2 {
+        String myString = "2"
+    }
 }
