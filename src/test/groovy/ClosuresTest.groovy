@@ -1,5 +1,6 @@
 import org.junit.jupiter.api.Test
 
+import java.awt.font.ShapeGraphicAttribute
 import java.util.stream.Collectors
 
 import static org.junit.Assert.assertThrows
@@ -295,5 +296,70 @@ class ClosuresTest {
 
     class MyClass2 {
         String myString = "2"
+    }
+
+    @Test
+    void "closure accumulator"() {
+        def accumulator = acc(0)
+
+        assert accumulator(0) == 0
+        assert accumulator(1) == 1
+        assert accumulator(1) == 2
+        assert accumulator(2) == 4
+    }
+
+    // returned closure has a reference to local variable n,
+    // and so consecutive calls to closure uce this variable to store accumulated number
+    // during the lifetime of closure
+    def acc(n) {
+        return { n += it }
+    }
+
+    @Test
+    void "returning from closure"() {
+        // end return - last expression's result is returned, return keyword is optional
+        assert [1, 2, 3].collect { it * 2 } == [1, 4, 6]
+        assert [1, 2, 3].collect { return it * 2 } == [1, 4, 6]
+    }
+
+    @Test
+    void "visitor pattern with closures"() {
+        def drawing = new Drawing(shapes: [new Square(width: 1), new Circle(radius: 1)])
+
+        def total = 0
+        drawing.accept { total += it.area() }
+
+        assert total == 4.141592653589793
+    }
+
+    class Drawing {
+
+        List shapes
+
+        def accept(Closure yield) {
+            shapes.each { it.accept(yield) }
+        }
+    }
+
+    class Shape {
+        def accept(Closure yield) {
+            yield(this)
+        }
+    }
+
+    class Square extends Shape {
+        def width
+
+        def area() {
+            width**2
+        }
+    }
+
+    class Circle extends Shape {
+        def radius
+
+        def area() {
+            Math.PI * radius**2
+        }
     }
 }
