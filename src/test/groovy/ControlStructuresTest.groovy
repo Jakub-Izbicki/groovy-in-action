@@ -1,5 +1,7 @@
 import org.junit.jupiter.api.Test
 
+import java.awt.Point
+
 class ControlStructuresTest {
 
     @Test
@@ -68,5 +70,51 @@ class ControlStructuresTest {
             assert true
             break
         }
+    }
+
+    @Test
+    void "elvis operator"() {
+        def someVal = "abc"
+        def defaultVal = "default"
+
+        // note: elvis operator allows to evaluate argument only once
+        assert (someVal ?: defaultVal) == "abc"
+        assert (null ?: defaultVal) == "default"
+    }
+
+    @Test
+    void "switch statement with the use of classifiers"() {
+        // matching cases work because objects implement isCase():
+        switch (10) {
+            case 0:
+                assert false
+                break
+            case 0..9: // range's isCase() is a.contains(b)
+                assert false
+                break
+            case [8, 9, 11]: // list's isCase() is a.contains(b)
+                assert false
+                break
+            case Float: // class's isCase() is a.isInstance(b)
+                assert false
+                break
+            case { it % 2 != 0 }: // closure's isCase() is a.call(b)
+                assert false
+                break
+            case "abc": // string's isCase() is (a == null && b == null) || a.equals(b)
+                assert false
+                break
+            case new Point(1, 2): // object's default isCase() is a.equals(b)
+                assert false
+                break
+            case ~/../: // pattern's isCase() is a.matcher(b.toString()).matches()
+                assert true
+                break
+            default:
+                assert false
+        }
+
+        // isCase is also user in collection's grep() method, with a classifier as its argument
+        // and with `in` operator
     }
 }
