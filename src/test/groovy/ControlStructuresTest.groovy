@@ -1,6 +1,7 @@
 import org.junit.jupiter.api.Test
 
 import java.awt.Point
+import java.util.regex.Matcher
 
 class ControlStructuresTest {
 
@@ -116,5 +117,46 @@ class ControlStructuresTest {
 
         // isCase is also user in collection's grep() method, with a classifier as its argument
         // and with `in` operator
+    }
+
+    @Test
+    void "for loop"() {
+        // foreach loop uses `in` keyword,
+        // can use implicit type for loop variable
+        for (i in 0..3) {
+            assert i <= 3
+        }
+
+        // an iterable can be an object
+//        def file = new File("some/path")
+//        for (line in file) {
+//
+//        }
+
+        // an iterable can be an object
+        Matcher numbersMatcher = "fmad2834n2" =~ /\d/
+        def matched = []
+        for (String match in numbersMatcher) {
+            matched << match
+        }
+        assert matched.join() == '28342'
+
+        // will not iterate if iterable is null
+        for (i in null) {
+            assert false
+        }
+
+        // if an iterable cannot be iterated over (does not implement proper methods),
+        // for loop will run with an wrapper iterable containing only one object
+        def count = 0
+        for (i in new Object()) {
+            assert count == 0
+            count++
+        }
+    }
+
+    @Test
+    void "closures having last expression evaluating to void will return null"() {
+        assert {}() == null
     }
 }
