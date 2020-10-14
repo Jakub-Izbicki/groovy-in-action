@@ -1,5 +1,6 @@
 import org.junit.jupiter.api.Test
 
+import java.awt.Point
 import java.util.regex.Pattern
 import java.util.stream.Collectors
 
@@ -122,6 +123,8 @@ class CollectionsTest {
         // can throw if cast not possible
         assertThrows(IllegalArgumentException.class,
                 () -> 1 <=> "foo")
+
+        assert new Numeral(1) <=> new Numeral(2) == -1
     }
 
 
@@ -422,7 +425,7 @@ class CollectionsTest {
 
     @Test
     void "copy and modify semantics on collections"() {
-        // usually methods that modify the receiver, no not return new collection
+        // usually methods that modify the receiver, do not return new collection
         assert [1, 2, 3].removeAll { it == 2 } instanceof Boolean
 
         // usually methods that dont modify the receiver return a collection

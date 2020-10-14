@@ -1,5 +1,6 @@
 import org.junit.jupiter.api.Test
 
+import java.awt.Point
 import java.awt.font.ShapeGraphicAttribute
 import java.util.stream.Collectors
 
@@ -11,7 +12,7 @@ class ClosuresTest {
     void "closures"() {
         (0..3).each { num -> assert num instanceof Integer }
 
-        // when closure accepting single argument, 'it' ca be used
+        // when closure accepting single argument, 'it' can be used
         (0..3).each { assert it instanceof Integer }
 
         // when closure is declared as a last parameter of the method, it can be
@@ -26,7 +27,7 @@ class ClosuresTest {
         assert getPrinter() instanceof Closure
     }
 
-    def Closure getPrinter() {
+    Closure getPrinter() {
         return { println it }
     }
 
@@ -259,8 +260,8 @@ class ClosuresTest {
         assert closure.resolveStrategy == Closure.OWNER_FIRST
 
         assert context == [
-                'prop', 'method', // resolved local variables
-                'param', 'local'  // resolved free variables
+                'prop', 'method', // resolved free variables
+                'param', 'local'  // resolved local variables
         ]
     }
 
@@ -282,8 +283,22 @@ class ClosuresTest {
 
         // myString ref is resolved against delegates' scope
         // (first is looked for in local, then owner, only then in delegate is found)
-        assert new MyClass1().with(closure) == "1"
+        assert new MyClass1().with(closure) == "1" //
         assert new MyClass2().with(closure) == "2"
+
+        def y = 0
+        // .with() resolves closure against Point's instance scope (Point instance becomes delegate)
+        def point = new Point().with {
+            // same as it.x = 1, BUT not the same as this.x = 1
+            x = 1
+
+            // tricky, because y is first found on local scope, so Point's y member is not modified here
+            y = 1
+
+            return it
+        }
+        assert point.x == 1
+        assert point.y != 1
 
         // will throw MissingPropertyException: No such property: myString2 for class: ClosuresTest
         // because closure's this, owner, and delegate is ClosuresTest class, and there is no myString
@@ -309,7 +324,7 @@ class ClosuresTest {
     }
 
     // returned closure has a reference to local variable n,
-    // and so consecutive calls to closure uce this variable to store accumulated number
+    // and so consecutive calls to closure use this variable to store accumulated number
     // during the lifetime of closure
     def acc(n) {
         return { n += it }

@@ -1,7 +1,9 @@
 import org.junit.jupiter.api.Test
 
-import java.awt.*
-import java.util.regex.Matcher
+import java.awt.Point
+import java.awt.Rectangle as SuperShapeRectangle
+
+import static org.junit.jupiter.api.Assertions.assertThrows
 
 class OOPTest {
 
@@ -74,5 +76,88 @@ class OOPTest {
         }
     }
 
+    @Test
+    void "imitating named arguments with map formal argument"() {
+        assert acceptsNamedArgumentsWithMap(a: 1, b: 2, c: 3) == [1, 2, 3]
+    }
 
+    def acceptsNamedArgumentsWithMap(Map args) {
+        return args.values().toList()
+    }
+
+    @Test
+    void "call methods by string name"() {
+        assert new Point(1, 2).getY() == 2
+        assert new Point(1, 2).'getY'() == 2
+    }
+
+    @Test
+    void "safe dereferencing"() {
+        Point point = new Point(1, 1)
+        assert point.x == 1
+        point = null
+
+        // ?. operator checks if reference is not null, and if not then executes expression on reference,
+        // otherwise null is returned
+        assert point?.x == null
+    }
+
+    @Test
+    void "positional parameters in constructors"() {
+        def point1 = new Point(1, 2) // classic
+
+        // when there is a list coerced to some other type,
+        // groovy calls type's constructor with list's elements as arguments, preserving list's order
+        def point2 = [1, 2] as Point // explicit coercion
+        Point point3 = [1, 2] // implicit coercion
+    }
+
+    @Test
+    void "named parameters in default constructor"() {
+        // when no-args constructor present, below expresion will forst call it,
+        // and then call setters for all the arguments passes in Map (as named arguments are put into Map object)
+        def a = new NamedParametersConstructor(one: 1, two: 2)
+        assert a.getOne() == 1
+
+
+        // will throw because class has no no-args constructor
+        // or a constructor with Map as an argument (so calling named parameters constructor is unavailable)
+        assertThrows(GroovyRuntimeException.class,
+                { new NoNoArgsConstructor(one: 1, two: 2) })
+    }
+
+    // no constructor so no-args constructor generated
+    // named parameters constructor can be used if there is no-args constructor present
+    // or constructor with a Map as a first argument
+    class NamedParametersConstructor {
+        int one, two
+    }
+
+    class NoNoArgsConstructor {
+        int one, two
+
+        NoNoArgsConstructor(int one, int two) {
+            this.one = one
+            this.two = two
+        }
+    }
+
+    @Test
+    void "using import aliases"() {
+        assert new SuperShapeRectangle()
+    }
+
+    @Test
+    void "classpath resolve sources in groovy"() {
+        // JDK/JRE      -> %JAVA_HOME%/lib
+        //                 %JAVA_HOME%/lib/ext
+        // OS + CMD     -> CLASSPATH variable
+        // Java         -> -cp
+        // Groovy       -> %GROOVY_HOME%/lib
+        //              -> -cp
+        //              -> . (current dir)
+        assert true
+    }
+
+    
 }

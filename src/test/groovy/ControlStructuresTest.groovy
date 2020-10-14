@@ -153,6 +153,7 @@ class ControlStructuresTest {
             assert count == 0
             count++
         }
+        assert count == 1
     }
 
     @Test
