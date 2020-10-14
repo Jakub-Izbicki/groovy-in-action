@@ -2,6 +2,7 @@ import org.junit.jupiter.api.Test
 
 import java.awt.Point
 import java.awt.Rectangle as SuperShapeRectangle
+import java.util.stream.Stream
 
 import static org.junit.jupiter.api.Assertions.assertThrows
 
@@ -159,5 +160,86 @@ class OOPTest {
         assert true
     }
 
-    
+    @Test
+    void "interfaces can be implemented with closures"() {
+        MyInt myInt1 = new MyImpl()
+        assert myInt1.doSth('a') == 'a'
+        // closure coerced to a type implementing a functional interface
+        MyInt myInt2 = { it }
+        assert myInt2.doSth('a') == 'a'
+    }
+
+    interface MyInt {
+        def doSth(string)
+    }
+
+    class MyImpl implements MyInt {
+
+        @Override
+        def doSth(string) {
+            return string
+        }
+    }
+
+    @Test
+    void "multimethods - dispatching methods based on their dynamic argument types"() {
+        assert doSth(new Point()) == 'object'
+        assert doSth("foo") == 'string'
+
+        assert new ClassWithEquals() == new ClassWithEquals()
+        assert new ClassWithEquals() != "foo"
+    }
+
+    def doSth(Object arg) {
+        return 'object'
+    }
+
+    def doSth(String arg) {
+        return 'string'
+    }
+
+    class ClassWithEquals {
+
+        // overridden and invoked only for arguments of type ClassWithEquals
+        // the rest fallbacks to Object.equals()
+        boolean equals(ClassWithEquals obj) {
+            return true
+        }
+    }
+
+    @Test
+    void "traits in groovy as a form of mixin"() {
+        def book = new Book(isbn: "foo", title: "bar")
+        book.save()
+
+        assert book.getUuid() != null
+        assert book.getVersion() == 1
+    }
+
+    trait Identifiable {
+        String uuid
+    }
+
+    trait Versioned {
+        int version
+    }
+
+    trait Persistent implements Identifiable {
+        def save() {
+            uuid = new Random().nextInt().toString()
+        }
+    }
+
+    class Entity implements Identifiable, Versioned, Persistent {
+        String title
+
+        def save() {
+            version++
+            Persistent.super.save() // way to access props from traits
+        }
+    }
+
+    class Book extends Entity {
+        String isbn
+    }
 }
