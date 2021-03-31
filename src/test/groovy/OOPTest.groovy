@@ -182,9 +182,12 @@ class OOPTest {
     }
 
     @Test
-    void "multimethods - dispatching methods based on their dynamic argument types"() {
-        assert doSth(new Point()) == 'object'
-        assert doSth("foo") == 'string'
+    void "multimethods - dispatching methods based on their dynamic argument types, instead of static type"() {
+        Object point = new Point();
+        Object string = "foo";
+
+        assert doSth(point) == 'object'
+        assert doSth(string) == 'string'
 
         assert new ClassWithEquals() == new ClassWithEquals()
         assert new ClassWithEquals() != "foo"
